@@ -41,18 +41,29 @@ width:         	resd	1
 height:        	resd	1
 window:		resq	1
 gc:		resq	1
-x1:             resd    1
-x2:             resd    1
-y1:             resd    1
-y2:             resd    1
+image_x:        resq    1
+image_y:        resq    1
+c_r:            resq    1
+c_i:            resq    1
+z_r:            resq    1
+z_i:            resq    1
+i:              resq    1
+tmp:            resq    1
+result:         resq    1
+iteration_max:  resq    1
+
+
 section .data
 
 event:		times	24 dq 0
 
-;x1:	dd	0
-;x2:	dd	0
-;y1:	dd	0
-;y2:	dd	0
+x1:	dd	-2.1
+x2:	dd	0.6
+y1:	dd	-1.2
+y2:	dd	1.2
+zoom:   dd      100
+x:      dd        0
+y:      dd        0
 
 section .text
 	
@@ -125,74 +136,82 @@ jmp boucle
 ;#########################################
 dessin:
 	
-movsd dword[x1],-2.1
-movsd dword[y1],-1.2
-movsd dword[x2],0.6
-movsd dword[y2],1.2
-
-movsx ebx,dword[x2]
-movsx eax,dword[x1]
-
-fsub ebx,eax
-fmul ebx,dword[zoom]
-;lea ebx, [ebx * dword[zoom]]
-
-movsx dword[image_x],dword[ebx]
-
-movsx ecx,dword[y1]
-movsw edx,dword[y2]
 
 
-fsub edx,ecx
-fmul edx,dword[zoom]
-;lea ebx, [ebx * dword[zoom]]
+movss xmm0,dword[x2]
+movss xmm1,dword[x1]
 
-movsx dword[image_y],dword[edx]
+subss xmm0,xmm1
+mulss xmm2,dword[zoom]
 
-xor eax,eax;eax = 0
-xor ebx,ebx;ebx = 0
-xor ecx,ecx;ecx = 0
-xor edx,edx;edx = 0
+
+movss dword[image_x],xmm2
+xorps xmm0,xmm0
+xorps xmm1,xmm1
+xorps xmm2,xmm2
+
+movss xmm0,dword[y1]
+movss xmm1,dword[y2]
+
+
+subss xmm1,xmm0
+mulss xmm2,dword[zoom]
+
+
+movss dword[image_y],xmm2
+xorps xmm0,xmm0
+xorps xmm1,xmm1
+xorps xmm2,xmm2
+
+
+
 
 ;pour x = 0 tant que x < image_x step 1
 ;pour y = 0 tant que y < image_y stpe 1
     
 boucleX:
-        cmp x,image_x
+        mov eax,dword[x]
+        cmp eax,dword[image_x]
         jl flush
-        cmp y,image_y
+        mov ebx,dword[y]
+        cmp ebx,dword[image_y]
         jl todo
         jmp boucleX
 
 todo:
         ; Calcule de c_r = x / zoom + x1
-        movsx eax,dword[x]
-        movsx ebx,dword[zoom]
-        cwd 
-        idiv ebx
-        add ebx,dword[x1]
-        movsx c_r, dword[ebx]
-        
-        ;Remise a zéro de ces registres ebx et eax
+        xor eax,eax
         xor ebx,ebx
-        xor eax, eax
+        mov eax,dword[x]
+        mov ebx,dword[zoom]
+        xor edx,edx
+        div  ebx
+        add eax,dword[x1]
+        movss dword[c_r], eax
+        
+        ;remise a zéro
+        xor eax,eax
+        xor ebx,ebx
+        xor edx,edx
+        
         
         ; Calcule de c_i = y / zoom + y1
-        movsx eax,dword[y]
-        movsx ebx,dword[zoom]
-        cwd
-        idiv ebx
-        add ebx,dword[y1]
-        movsx c_i, dword[ebx]
+        mov eax,dword[y]
+        mov ebx,dword[zoom]
+        xor edx,edx
+        div ebx
+        add eax,dword[y1]
+        mov c_i, dword[eax]
 
         ;Remise a zéro de ces registres ebx et eax
         xor ebx,ebx
-        xor eax, eax   
+        xor eax, eax
+        xor edx,edx   
         
         ; Mettre a zéro z_r et z_i  et i
-        mov z_r,0
-        mov z_i,0 
-        mov i,0
+        xor z_r,z_r
+        xor z_i,z_i 
+        xor i,i
 
 calcul:
     mov tmp, z_r
