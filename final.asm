@@ -43,14 +43,14 @@ window:		resq	1
 gc:		resq	1
 image_x:        resq    1
 image_y:        resq    1
-c_r:            resq    1
-c_i:            resq    1
-z_r:            resq    1
-z_i:            resq    1
-i:              resq    1
-tmp:            resq    1
-result:         resq    1
-iteration_max:  resq    1
+c_r:            resd    1
+c_i:            resd    1
+i:              resd    1
+tmp:            resd    1
+result:         resd    1
+iteration_max:  resd    1
+z_r:            resd    1
+z_i:            resd    1
 
 
 section .data
@@ -64,6 +64,19 @@ y2:	dd	1.2
 zoom:   dd      100
 x:      dd        0
 y:      dd        0
+zero:    dd       0
+un:      dd       1
+deux:    dd       2
+quatre:  dd       4
+format:  db       "On passe dans la boucle: %s",10,0
+pixel1:  db       "pixel",0
+dessin1: db        "dessin",0
+boucleX1:  db      "boucleX",0
+todo1:     db       "todo",0
+calcul1:   db        "cacul",0
+saut1:     db        "saut",0
+
+
 
 section .text
 	
@@ -129,14 +142,12 @@ je dessin							; on saute au label 'dessin'
 
 cmp dword[event],KeyPress			; Si on appuie sur une touche
 je closeDisplay						; on saute au label 'closeDisplay' qui ferme la fenêtre
-jmp boucle
+jmp calcul
 
 ;#########################################
 ;#		DEBUT DE LA ZONE DE DESSIN		 #
 ;#########################################
 dessin:
-	
-
 
 movss xmm0,dword[x2]
 movss xmm1,dword[x1]
@@ -163,118 +174,129 @@ xorps xmm0,xmm0
 xorps xmm1,xmm1
 xorps xmm2,xmm2
 
-
-
-
-;pour x = 0 tant que x < image_x step 1
-;pour y = 0 tant que y < image_y stpe 1
-    
-boucleX:
-        mov eax,dword[x]
-        cmp eax,dword[image_x]
-        jl flush
-        mov ebx,dword[y]
-        cmp ebx,dword[image_y]
-        jl todo
-        jmp boucleX
-
-todo:
+for1:
+        movss xmm0,dword[x]
+        comiss xmm0,dword[image_x] ; x>=image_x
+        jae flush
+        
+for2:
+        xorps xmm0, xmm0
+        movss xmm0,dword[y]
+        comiss xmm0,dword[image_y] ; y>=image_y
+        jae vfor
+        
         ; Calcule de c_r = x / zoom + x1
-        xor eax,eax
-        xor ebx,ebx
-        mov eax,dword[x]
-        mov ebx,dword[zoom]
-        xor edx,edx
-        div  ebx
-        add eax,dword[x1]
-        movss dword[c_r], eax
+
+        xorps xmm0,xmm0
+        
+        movss xmm0,dword[x]
+        movss xmm1,dword[zoom]
+        divss  xmm0,xmm1
+        addss xmm0,dword[x1]
+        movss dword[c_r], xmm0
         
         ;remise a zéro
-        xor eax,eax
-        xor ebx,ebx
-        xor edx,edx
+        xorps xmm0,xmm0
+        xorps xmm1,xmm1
+        
         
         
         ; Calcule de c_i = y / zoom + y1
-        mov eax,dword[y]
-        mov ebx,dword[zoom]
-        xor edx,edx
-        div ebx
-        add eax,dword[y1]
-        mov c_i, dword[eax]
-
-        ;Remise a zéro de ces registres ebx et eax
-        xor ebx,ebx
-        xor eax, eax
-        xor edx,edx   
+        movss xmm0,dword[y]
+        movss xmm1,dword[zoom]
+        divss xmm0,xmm1
+        addss xmm0,dword[y1]
+        movss dword[c_i], xmm0
+        
+        ;remise a zéro
+        xorps xmm0,xmm0
+        xorps xmm1,xmm1
         
         ; Mettre a zéro z_r et z_i  et i
-        xor z_r,z_r
-        xor z_i,z_i 
-        xor i,i
+        movss xmm0,dword[zero]
+        movss dword[z_r],xmm0
+        movss dword[z_i],xmm0
+        movss dword[i],xmm0
+        
+        ;remise a zéro
+        xorps xmm0,xmm0
 
 calcul:
-    mov tmp, z_r
+    ;remise a zéro
+    xorps xmm0,xmm0
+    xorps xmm1,xmm1
+    
+    
+    movss xmm0,dword[z_r]
+    movss dword[tmp], xmm0
     
     ;Calcul z_r = z_r*z_r - z_i + c_r
-    imul eax, dword[z_r],dword[z_r]
-    sub z_r,dword[eax]
-    add z_r,dword[c_r]
+    mulss xmm0,dword[z_r]
+    subss xmm0,dword[z_i]
+    addss xmm0,dword[c_r]
+    movss dword[z_r],xmm0
         
-    ;Rénitialiser de eax
-    xor eax,eax
+    ;Rénitialiser de xmm0
+    xorps xmm0,xmm0
         
                    
     ;Calcul z_i = 2 * z_i * tmp + c_i
-     imul eax, 2, dword[z_i]
-     imul eax, dword[tmp]
-     add  eax, dword[c_i]
-     movzx dword[z_i],dword[eax]
+     movss xmm0,dword[deux]
+     mulss xmm0,dword[z_i]
+     mulss xmm0, dword[tmp]
+     addss  xmm0, dword[c_i]
+     movss dword[z_i],xmm0
         
-    ;Rénitialiser de eax
-     xor eax,eax
+    ;Rénitialiser de xmm0
+     xorps xmm0,xmm0
         
     ;incrémention de +1 sur i
-     inc i 
+     mov eax,dword[un]
+     add dword[i],eax
+     
+     ;Rénitialiser de xmm0
+     xorps xmm0,xmm0
+     xor eax,eax
      
     ;Calcul de z_r*z_r + z_i dans result
-    imul eax, dword[z_r], dword[z_r]
-    add eax,dword[z_i]
-    mov dword[result],dword[eax]
+    movss xmm0,dword[z_r]
+    mulss xmm0,dword[z_r]
+    addss xmm0,dword[z_i]
+    
+    ;Mettre i dans xmm1
+    movss xmm1,dword[i]
 
-    ;Rénitialiser de eax
-     xor eax,eax
-    
-    ;Boucle calcul relancer si i< iteration_max
-    cmp dword[i],dword[iteration_max]
-    jl calcul
-    
-    ;Boucle calcul relancer si result < 4
-     cmp dword[result],4
-     jl calcul
      
-     ;Sautez la boucle dessin si jamais i=/= iteration_max
-     cmp dword[i],dword[iteration_max]
-     jne saut
      
-pixel:
-      ; dessiner le pixel de cordonnées (x;y)  
-        mov rdi,qword[display_name]
-        mov rsi,qword[gc]
-        mov edx,0xFF0000	; Couleur du crayon ; rouge
-        call XSetForeground
-        ; dessin du pixel
-        mov rdi,qword[display_name]
-        mov rsi,qword[window]
-        mov rdx,qword[gc]
-        mov ecx,dword[x1]	; coordonnée source en x
-        mov r8d,dword[y1]	; coordonnée source en y
-        mov r9d,dword[x2]	; coordonnée destination en x
-        push qword[y2]		; coordonnée destination en y
-        call XDrawLine
+     comiss xmm0,dword[quatre] ; result >= 4
+     jae calcul
+     comiss xmm1,dword[iteration_max] ; i>iteration_max
+     ja calcul
+     comiss xmm1,dword[iteration_max] ; i=/=iteration_max
+     jne for2
+
+
+pixel: 
+          ; dessin de la ligne 1
+          mov rdi,qword[display_name]
+          mov rsi,qword[window]
+          mov rdx,qword[gc]
+          mov ecx,dword[x]	; coordonnée source en x
+          mov r8d,dword[y]	; coordonnée source en y
+          mov r9d,dword[x]	; coordonnée destination en x
+          push qword[y]		; coordonnée destination en y
+          call XDrawLine
+          inc dword[y]
+          jmp for2
         
-saut:
-     jmp boucleX  
+        
+        
+        
+vfor:
+    ;Rénitialiser de xmm0
+     xorps xmm1,xmm1
+    inc dword[x]
+    jmp for1
 
 ; ############################
 ; # FIN DE LA ZONE DE DESSIN #
