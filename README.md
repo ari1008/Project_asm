@@ -36,29 +36,3 @@ Pour x = 0 tant que x < image_x par pas de 1
 finPour
 
 
-En pseudo code en c pour moi:
-définir x1 = -2.1
-définir x2 = 0.6
-définir y1 = -1.2
-définir y2 = 1.2
-définir zoom = 100 // pour une distance de 1 sur le plan, on a 100 pixels sur l'image
-définir iteration_max = 50
-// on calcule la taille de l'image :
-for(x=0;x< image_x;x++){
-    for(y=0;y< image_y;y++){
-        définir c_r = x / zoom + x1
-        définir c_i = y / zoom + y1
-        définir z_r = 0
-        définir z_i = 0
-        définir i = 0
-        do{
-            définir tmp = z_r
-            z_r = z_r*z_r - z_i*z_i + c_r
-            z_i = 2*z_i*tmp + c_i
-            i = i+1
-        }while( z_r*z_r + z_i*z_i < 4 AND i < iteration_max)
-        if( i = iteration_max){
-            dessiner le pixel de coordonnées (x; y)
-        }
-    }
-}
