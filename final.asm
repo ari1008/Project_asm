@@ -41,8 +41,8 @@ width:         	resd	1
 height:        	resd	1
 window:		resq	1
 gc:		resq	1
-image_x:        resq    1
-image_y:        resq    1
+image_x:        resd    1
+image_y:        resd    1
 c_r:            resd    1
 c_i:            resd    1
 i:              resd    1
@@ -51,6 +51,7 @@ result:         resd    1
 iteration_max:  resd    1
 z_r:            resd    1
 z_i:            resd    1
+teste: resd 1
 
 
 section .data
@@ -68,13 +69,8 @@ zero:    dd       0
 un:      dd       1
 deux:    dd       2
 quatre:  dd       4
-format:  db       "On passe dans la boucle: %s",10,0
-pixel1:  db       "pixel",0
-dessin1: db        "dessin",0
-boucleX1:  db      "boucleX",0
-todo1:     db       "todo",0
-calcul1:   db        "cacul",0
-saut1:     db        "saut",0
+format:  db       "On passe dans la boucle: %f",10,0
+format1:  db      "On passe dans la boucle: %d",10,0 
 
 
 
@@ -83,7 +79,6 @@ section .text
 ;##################################################
 ;########### PROGRAMME PRINCIPAL ##################
 ;##################################################
-
 main:
 xor     rdi,rdi
 call    XOpenDisplay	; Création de display
@@ -142,24 +137,24 @@ je dessin							; on saute au label 'dessin'
 
 cmp dword[event],KeyPress			; Si on appuie sur une touche
 je closeDisplay						; on saute au label 'closeDisplay' qui ferme la fenêtre
-jmp calcul
+jmp boucle
+
 
 ;#########################################
 ;#		DEBUT DE LA ZONE DE DESSIN		 #
 ;#########################################
 dessin:
-
-movss xmm0,dword[x2]
-movss xmm1,dword[x1]
-
-subss xmm0,xmm1
-mulss xmm2,dword[zoom]
-
-
-movss dword[image_x],xmm2
-xorps xmm0,xmm0
+movss xmm1,dword[x2]
+movss xmm2,dword[x1]
+movss xmm3,dword[zoom]
+subss xmm1,xmm2
+mulss xmm3,xmm1
+cvtss2si eax,xmm3
+mov dword[image_x],eax
+xorps xmm3,xmm3
 xorps xmm1,xmm1
 xorps xmm2,xmm2
+
 
 movss xmm0,dword[y1]
 movss xmm1,dword[y2]
@@ -167,22 +162,26 @@ movss xmm1,dword[y2]
 
 subss xmm1,xmm0
 mulss xmm2,dword[zoom]
+cvtss2si ebx,xmm2
+mov dword[image_y],ebx
 
-
-movss dword[image_y],xmm2
+;Rénitialiser eax,ebx,xmm0,xmm1,xmm2
+xor eax,eax
+xor ebx,ebx
 xorps xmm0,xmm0
 xorps xmm1,xmm1
 xorps xmm2,xmm2
 
+
 for1:
-        movss xmm0,dword[x]
-        comiss xmm0,dword[image_x] ; x>=image_x
+
+        cmp eax,dword[image_x] ; x>=image_x
         jae flush
         
-for2:
-        xorps xmm0, xmm0
-        movss xmm0,dword[y]
-        comiss xmm0,dword[image_y] ; y>=image_y
+for2: 
+        xor eax,eax
+        mov eax,dword[y]
+        cmp eax,dword[image_y] ; y>=image_y
         jae vfor
         
         ; Calcule de c_r = x / zoom + x1
@@ -221,18 +220,20 @@ for2:
         ;remise a zéro
         xorps xmm0,xmm0
 
-calcul:
+todo:
     ;remise a zéro
     xorps xmm0,xmm0
     xorps xmm1,xmm1
     
     
     movss xmm0,dword[z_r]
+    movss xmm1,dword[z_r]
     movss dword[tmp], xmm0
     
-    ;Calcul z_r = z_r*z_r - z_i + c_r
+    ;Calcul z_r = z_r*z_r - z_i*z_r + c_r
     mulss xmm0,dword[z_r]
-    subss xmm0,dword[z_i]
+    mulss xmm1,dword[z_i]
+    subss xmm0,xmm1
     addss xmm0,dword[c_r]
     movss dword[z_r],xmm0
         
@@ -258,10 +259,15 @@ calcul:
      xorps xmm0,xmm0
      xor eax,eax
      
-    ;Calcul de z_r*z_r + z_i dans result
+    ;Calcul de z_r*z_r + z_i*z_i dans result
     movss xmm0,dword[z_r]
     mulss xmm0,dword[z_r]
-    addss xmm0,dword[z_i]
+    movss xmm1,dword[z_i]
+    mulss xmm0,dword[z_i]
+    addss xmm0,xmm1
+    
+    ;Rénitialiser de xmm1
+    xorps xmm1,xmm1
     
     ;Mettre i dans xmm1
     movss xmm1,dword[i]
@@ -269,9 +275,9 @@ calcul:
      
      
      comiss xmm0,dword[quatre] ; result >= 4
-     jae calcul
+     jae todo
      comiss xmm1,dword[iteration_max] ; i>iteration_max
-     ja calcul
+     ja todo
      comiss xmm1,dword[iteration_max] ; i=/=iteration_max
      jne for2
 
@@ -294,8 +300,11 @@ pixel:
         
 vfor:
     ;Rénitialiser de xmm0
-     xorps xmm1,xmm1
+     xor eax,eax
     inc dword[x]
+    mov ecx,0
+    mov dword[y],ecx
+    xor ecx,ecx
     jmp for1
 
 ; ############################
